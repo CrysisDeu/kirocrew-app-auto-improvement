@@ -30,6 +30,7 @@ from pathlib import Path
 import pytest
 
 from kiro_crew import security
+from kiro_crew.security import paths_lists
 from auto_improvement.backend import clone_setup
 from auto_improvement.backend import profile_normalize as PN
 from auto_improvement.backend import store
@@ -163,7 +164,32 @@ def test_repo_root_returns_the_tree_when_nothing_exists(tmp_path):
 
 
 def test_write_protected_targets_masks_existing_parent_dirs(tmp_path, monkeypatch):
-    """PARENT directories are returned, and only ones that exist."""
+    """Existing parents are masked without hiding all of ``~/.kiro``."""
+    fake_home = tmp_path / "h"
+    (fake_home / ".kiro" / "crew").mkdir(parents=True)
+    (fake_home / ".kiro" / "workspace-roots").touch()
+    monkeypatch.setattr(gh.Path, "home", staticmethod(lambda: fake_home))
+    monkeypatch.setattr(
+        security,
+        "write_protected_home_paths",
+        lambda: (
+            ".kiro/crew/config.json",
+            ".kiro/workspace-roots",
+            ".absent/dir/file.json",
+        ),
+    )
+    # The gateway's own list of these leaves, set here so the case holds on a test
+    # host that predates it as well.
+    monkeypatch.setattr(
+        paths_lists, "_KIRO_PERMISSION_RULE_LEAVES", (".kiro/workspace-roots",), raising=False
+    )
+    out = gh.write_protected_targets()
+    assert str(fake_home / ".kiro") not in out
+    assert out == (str(fake_home / ".kiro" / "crew"),)
+
+
+def test_a_gateway_without_permission_rule_leaves_still_masks(tmp_path, monkeypatch):
+    """A gateway with no such list leaves nothing of its own out, and the mask holds."""
     fake_home = tmp_path / "h"
     (fake_home / ".kiro" / "crew").mkdir(parents=True)
     monkeypatch.setattr(gh.Path, "home", staticmethod(lambda: fake_home))
@@ -172,8 +198,8 @@ def test_write_protected_targets_masks_existing_parent_dirs(tmp_path, monkeypatc
         "write_protected_home_paths",
         lambda: (".kiro/crew/config.json", ".absent/dir/file.json"),
     )
-    out = gh.write_protected_targets()
-    assert out == (str(fake_home / ".kiro" / "crew"),)
+    monkeypatch.delattr(paths_lists, "_KIRO_PERMISSION_RULE_LEAVES", raising=False)
+    assert gh.write_protected_targets() == (str(fake_home / ".kiro" / "crew"),)
 
 
 def test_write_protected_targets_fails_soft(monkeypatch):

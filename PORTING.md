@@ -93,6 +93,16 @@ kirodotdev/KiroCrew#33344: the current-repository line is one message with a `<r
 slot (`autoImprovement.currentRepoLine`, translated in all 12 locales), so each language
 places the repository name where its word order puts it.
 
+kirodotdev/KiroCrew#36083 is ported with its tests: the tests' sandbox mask leaves out
+the kiro-cli permission-rule leaves the gateway puts on its write tier, as it leaves out
+each harness's own permission files, so the mask never hides all of `~/.kiro` from the
+target repository's pytest or the admission checker (`spine/push_policy.py`). The leaves
+come from the gateway's own list (`_host.fallback`); a gateway without that list has none
+of them on its write tier, and the mask is what it was. kirodotdev/KiroCrew#31863
+(synthetic credentials in four test fixtures, from a test helper the pinned test host
+does not have) and kirodotdev/KiroCrew#35994 (a test docstring this copy never carried)
+change no behaviour and are not ported.
+
 Paths with a line number below refer to the snapshot commit. A **gap** is something the
 built-in gets from Kiro Crew that an external app has no public way to get yet;
 closing one is a Kiro Crew change (a generic, app-agnostic App Kit seam), not a
@@ -220,6 +230,7 @@ becomes unredacted text, and a missing tool gate never becomes an approved tool 
 | `kiro_crew.sandbox` | `LAUNCHER_EXIT_PREFIXES`, `_LAUNCHER_SCRIPT_SUFFIX`, `_SANDBOX_ARTIFACT_PREFIX`, `effective_sandbox_mode`, `popen_limited`, `run_limited`, `sandboxed_spawn_argv` | `backend/clone_setup.py:41` `backend/runner.py:219` `profiles/github_repo/profile.py:85` `spine/agent_runner.py:67` | `sandboxed_spawn_argv`, `popen_limited`, `run_limited` (every agent, git and measurement child in the gateway's OS sandbox), `effective_sandbox_mode`, and the launcher's refusal prefixes and file-name affixes | no child process at all (never an unsandboxed one); the affixes fall back to the host's literals | an app-scoped sandboxed subprocess on the context |
 | `kiro_crew.sandbox_spawn` | `scrub_env` | `backend/deps.py:25` | `scrub_env`, the credential scrub of a child's environment | no dependency install (refused) | part of the sandboxed-subprocess seam |
 | `kiro_crew.security` | `redact`, `redact_and_truncate`, `redact_credentials`, `redact_exfiltration_urls`, `write_protected_home_paths` | `backend/commit.py:25` `backend/deps.py:26` `backend/mcp_server.py:26` `backend/pr_watchers.py:1615` `backend/routes.py:29` `backend/runner.py:408` `profiles/github_repo/pr_recipe.py:116` `profiles/github_repo/profile.py:294` `spine/agent_runner.py:644` `spine/driver_commit.py:110` `spine/push_policy.py:204` | `redact`, `redact_and_truncate`, `redact_credentials`, `redact_exfiltration_urls`, `write_protected_home_paths` | every redaction refuses and its text is withheld; a push is refused as unscannable; no measurement | `ctx.scrub` in the hooks; a scrubber reachable from the app's own threads and child processes |
+| `kiro_crew.security.paths_lists` | `_KIRO_PERMISSION_RULE_LEAVES` | `spine/push_policy.py:303` | the kiro-cli permission-rule leaves on the write tier, which the tests' mask leaves out | nothing is left out: a gateway without the list has none of them on its write tier | part of a sensitive-path predicate on the context |
 | `kiro_crew.sel` | `sel` | `backend/mcp_server.py:27` `backend/routes.py:1402` `backend/routes.py:1432` `spine/agent_runner.py:177` `spine/agent_runner.py:650` `spine/agent_runner.py:1232` `spine/agent_runner.py:1278` | `sel()`: the Security Event Log rows the built-in wrote (owner-route allows, agent approvals, MCP tool calls) | the audit write fails, and an approval that requires its row is refused | `ctx.audit` covers in-gateway rows; the stdio server and the runner threads need the same sink |
 | `kiro_crew.shared_crew.admission` | `OperationKind` | `spine/crew_runner.py:163` | `OperationKind` for shared-crew turn admission | no member run | part of the crew-member runtime |
 | `kiro_crew.shared_crew.turn_gate` | `run_admitted_or_raise` | `spine/crew_runner.py:164` | `run_admitted_or_raise`: a member turn is admitted like every other turn | no member run | part of the crew-member runtime |
